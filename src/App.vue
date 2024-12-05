@@ -1,0 +1,249 @@
+<template>
+  <div id="app">
+    <h1>My To-Do List</h1>
+    <to-do-form @todo-added="addToDo">
+      <el-button type="primary" @click="addToDo">Add</el-button>
+    </to-do-form>
+    <h2 id="list-summary" ref="listSummary" tabindex="-1">{{listSummary}}</h2>
+    <ul aria-labelledby="list-summary" class="stack-large">
+      <li v-for="item in ToDoItems" :key="item.id">
+  <div v-if="!item.isEditing">
+    <to-do-item
+      :label="item.label"
+      :done="item.done"
+      :id="item.id"
+      @checkbox-changed="updateDoneStatus(item.id)"
+      @item-deleted="deleteToDo(item.id)"
+      @item-edited="editToDo(item.id, $event)"
+    ></to-do-item>
+  </div>
+  <div v-else>
+    <to-do-item-edit-form
+    :id = "item.id"
+    :label="item.label"
+    @item-edited="editToDo(item.id, $event)"
+    @edit-cancelled="cancelEdit(item.id)"
+    ></to-do-item-edit-form>
+  </div>
+</li>
+    </ul>
+    <div id="chart"></div>
+  </div>
+</template>
+
+<script>
+import ToDoItem from "./components/ToDoItem.vue";
+import ToDoForm from "./components/ToDoForm.vue";
+import { ElButton } from 'element-plus';
+import * as echarts from 'echarts';
+import { nanoid } from "nanoid";
+
+export default {
+  name: "app",
+  components: {
+    ToDoItem,
+    ElButton,
+    ToDoForm,
+  },
+  data() {
+    return {
+      ToDoItems: [
+        { id: "todo-" + nanoid(), label: "Learn Vue", done: false },
+        {
+          id: "todo-" + nanoid(),
+          label: "Create a Vue project with the CLI",
+          done: true,
+        },
+        { id: "todo-" + nanoid(), label: "Have fun", done: true },
+        { id: "todo-" + nanoid(), label: "Create a to-do list", done: false },
+      ],
+    };
+  },
+
+  methods: {
+    addToDo(toDoLabel) {
+      this.ToDoItems.push({
+        id: "todo-" + nanoid(),
+        label: toDoLabel,
+        done: false,
+      });
+    },
+    updateDoneStatus(toDoId) {
+      const toDoToUpdate = this.ToDoItems.find((item) => item.id === toDoId);
+      toDoToUpdate.done =!toDoToUpdate.done;
+    },
+    deleteToDo(toDoId) {
+      const itemIndex = this.ToDoItems.findIndex((item) => item.id === toDoId);
+      this.ToDoItems.splice(itemIndex, 1);
+      this.$refs.listSummary.focus();
+    },
+    editToDo(toDoId, newLabel) {
+      const toDoToEdit = this.ToDoItems.find((item) => item.id === toDoId);
+      toDoToEdit.label = newLabel;
+    },
+     cancelEdit(toDoId) {
+     const toDoToCancelEdit = this.ToDoItems.find((item) => item.id === toDoId);
+     toDoToCancelEdit.isEditing = false;
+    },
+    initChart() {
+    const chartDom = document.getElementById('chart');
+    const myChart = echarts.init(chartDom);
+    const completedCount = this.ToDoItems.filter(item => item.done).length;
+    const totalCount = this.ToDoItems.length;
+    const option = {
+        title: {
+            text: '待办事项完成情况'
+        },
+        series: [
+            {
+                name: '完成情况',
+                type: 'pie',
+                data: [
+                    { value: completedCount, name: '已完成' },
+                    { value: totalCount - completedCount, name: '未完成' }
+                ]
+            }
+        ],
+        dataZoom: [
+            {
+                type: 'inside',
+                start: 0,
+                end: 100
+            }
+        ]
+    };
+    myChart.setOption(option);
+},},
+  computed: {
+    listSummary() {
+      const numberFinishedItems = this.ToDoItems.filter((item) => item.done).length;
+      return `${numberFinishedItems} out of ${this.ToDoItems.length} items completed`;
+    }
+  },
+  mounted() {
+    this.initChart();
+    // 添加监听器，监听 ToDoItems 数据变化，当变化时重新调用 initChart 方法更新图表
+    this.$watch('ToDoItems', () => {
+      this.initChart();
+    }, { deep: true });
+  }
+};
+</script>
+
+
+<style>
+  /* 全局样式 */
+  .btn {
+    padding: 0.8rem 1rem 0.7rem;
+    border: 0.2rem solid #4d4d4d;
+    cursor: pointer;
+    text-transform: capitalize;
+  }
+  .btn__danger {
+    color: #fff;
+    background-color: #ca3c3c;
+    border-color: #bd2130;
+  }
+  .btn__filter {
+    border-color: lightgrey;
+  }
+  .btn__danger:focus {
+    outline-color: #c82333;
+  }
+  .btn__primary {
+    color: #fff;
+    background-color: #000;
+  }
+  .btn-group {
+    display: flex;
+    justify-content: space-between;
+  }
+  .btn-group > * {
+    flex: 1 1 auto;
+  }
+  .btn-group > * + * {
+    margin-left: 0.8rem;
+  }
+  .label-wrapper {
+    margin: 0;
+    flex: 0 0 100%;
+    text-align: center;
+  }
+  [class*="__lg"] {
+    display: inline-block;
+    width: 100%;
+    font-size: 1.9rem;
+  }
+  [class*="__lg"]:not(:last-child) {
+    margin-bottom: 1rem;
+  }
+  @media screen and (min-width: 620px) {
+    [class*="__lg"] {
+      font-size: 2.4rem;
+    }
+  }
+  .visually-hidden {
+    position: absolute;
+    height: 1px;
+    width: 1px;
+    overflow: hidden;
+    clip: rect(1px 1px 1px 1px);
+    clip: rect(1px, 1px, 1px, 1px);
+    clip-path: rect(1px, 1px, 1px, 1px);
+    white-space: nowrap;
+  }
+  [class*="stack"] > * {
+    margin-top: 0;
+    margin-bottom: 0;
+  }
+  .stack-small > * + * {
+    margin-top: 1.25rem;
+  }
+  .stack-large > * + * {
+    margin-top: 2.5rem;
+  }
+  @media screen and (min-width: 550px) {
+    .stack-small > * + * {
+      margin-top: 1.4rem;
+    }
+    .stack-large > * + * {
+      margin-top: 2.8rem;
+    }
+  }
+  /* 全局样式结束 */
+  #app {
+    background: #fff;
+    margin: 2rem 0 4rem 0;
+    padding: 1rem;
+    padding-top: 0;
+    position: relative;
+    box-shadow:
+      0 2px 4px 0 rgba(0, 0, 0, 0.2),
+      0 2.5rem 5rem 0 rgba(0, 0, 0, 0.1);
+  }
+  @media screen and (min-width: 550px) {
+    #app {
+      padding: 4rem;
+    }
+  }
+  #app > * {
+    max-width: 50rem;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  #app > form {
+    max-width: 100%;
+  }
+  #app h1 {
+    display: block;
+    min-width: 100%;
+    width: 100%;
+    text-align: center;
+    margin: 0;
+    margin-bottom: 1rem;
+  }
+  #chart {
+    width: 400px;
+    height: 300px;
+}
+</style>
